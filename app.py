@@ -4,7 +4,6 @@ Created on Tue Aug 20 16:34:25 2024
 
 @author: Tayyab
 """
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -13,24 +12,25 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 import plotly.graph_objs as go
-
-# Load sample data
-@st.cache_data
-def load_sample_data():
-    try:
-        return pd.read_csv('AAPL.csv', parse_dates=['Date'])
-    except Exception as e:
-        st.error(f"Error loading sample data: {str(e)}")
-        return None
+import io
 
 # Load and preprocess data
 @st.cache_data
 def load_and_preprocess_data(file):
     try:
-        if isinstance(file, str):  # If it's a string, it's the path to the sample file
+        if isinstance(file, io.BytesIO):  # This is true for uploaded files
             df = pd.read_csv(file, parse_dates=['Date'])
-        else:  # Otherwise, it's an uploaded file
+            st.success("Successfully loaded user-uploaded file.")
+        elif isinstance(file, str):  # This is true for the sample file path
             df = pd.read_csv(file, parse_dates=['Date'])
+            st.success("Successfully loaded sample file.")
+        else:
+            st.error("Unexpected file type.")
+            return None
+        
+        st.write("First few rows of the loaded data:")
+        st.write(df.head())
+        
         df = add_technical_indicators(df)
         df = df[df['Volume'] != 0]
         return df
@@ -108,6 +108,7 @@ def main():
     # Data source selection
     data_source = st.radio("Choose data source:", ('Use sample data', 'Upload your own data'))
 
+    df = None
     if data_source == 'Use sample data':
         df = load_sample_data()
     else:
@@ -116,7 +117,6 @@ def main():
             df = load_and_preprocess_data(uploaded_file)
         else:
             st.warning("Please upload a CSV file.")
-            return
 
     if df is not None:
         st.subheader('Descriptive Statistics')
@@ -162,3 +162,6 @@ def main():
         fig_test.add_trace(go.Scatter(x=dates[split:], y=test_predictions.flatten(), mode='lines', name='Predicted Test Prices'))
         fig_test.update_layout(title='Testing Data: Actual vs Predicted Close Prices', xaxis_title='Date', yaxis_title='Close Price')
         st.plotly_chart(fig_test)
+
+if __name__ == "__main__":
+    main()
