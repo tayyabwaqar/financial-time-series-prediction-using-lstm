@@ -115,7 +115,8 @@ def main():
         if uploaded_file is not None:
             df = load_and_preprocess_data(uploaded_file)
         else:
-            df = None
+            st.warning("Please upload a CSV file.")
+            return
 
     if df is not None:
         st.subheader('Descriptive Statistics')
@@ -161,6 +162,3 @@ def main():
         fig_test.add_trace(go.Scatter(x=dates[split:], y=test_predictions.flatten(), mode='lines', name='Predicted Test Prices'))
         fig_test.update_layout(title='Testing Data: Actual vs Predicted Close Prices', xaxis_title='Date', yaxis_title='Close Price')
         st.plotly_chart(fig_test)
-
-if __name__ == "__main__":
-    main()
