@@ -14,19 +14,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 import plotly.graph_objs as go
 
-# Title and description
-st.title('Stock Price Prediction App')
-st.markdown("""
-This app predicts stock prices using a Long Short-Term Memory (LSTM) neural network model. 
-LSTM is a type of recurrent neural network (RNN) that is well-suited for time series data, 
-such as stock prices, because it can learn patterns over time.
-
-### How to Use This App
-1. **Upload a CSV File**: The file should contain the following columns: `Date`, `Open`, `High`, `Low`, `Close`, `Adj Close`, `Volume`.
-2. **Adjust Hyperparameters**: Use the sidebar to modify model settings and observe how they affect predictions.
-3. **View Predictions**: The app will display actual vs. predicted prices for both training and testing datasets.
-""")
-
 # Load sample data
 @st.cache_data
 def load_sample_data():
@@ -95,10 +82,17 @@ def create_and_train_model(X_train, y_train, lstm_units, dropout_rate, batch_siz
 
 # Main app
 def main():
+    # Title and description
     st.title('Stock Price Prediction App')
     st.markdown("""
-    This app predicts stock prices using a Long Short-Term Memory (LSTM) neural network model.
-    You can either use the sample data or upload your own CSV file with columns: Date, Open, High, Low, Close, Adj Close, Volume.
+    This app predicts stock prices using a Long Short-Term Memory (LSTM) neural network model. 
+    LSTM is a type of recurrent neural network (RNN) that is well-suited for time series data, 
+    such as stock prices, because it can learn patterns over time.
+    
+    ### How to Use This App
+    1. **Upload a CSV File**: The file should contain the following columns: `Date`, `Open`, `High`, `Low`, `Close`, `Adj Close`, `Volume`.
+    2. **Adjust Hyperparameters**: Use the sidebar to modify model settings and observe how they affect predictions.
+    3. **View Predictions**: The app will display actual vs. predicted prices for both training and testing datasets.
     """)
 
     # Sidebar for hyperparameters
