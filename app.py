@@ -14,11 +14,36 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 import plotly.graph_objs as go
 
+# Title and description
+st.title('Stock Price Prediction App')
+st.markdown("""
+This app predicts stock prices using a Long Short-Term Memory (LSTM) neural network model. 
+LSTM is a type of recurrent neural network (RNN) that is well-suited for time series data, 
+such as stock prices, because it can learn patterns over time.
+
+### How to Use This App
+1. **Upload a CSV File**: The file should contain the following columns: `Date`, `Open`, `High`, `Low`, `Close`, `Adj Close`, `Volume`.
+2. **Adjust Hyperparameters**: Use the sidebar to modify model settings and observe how they affect predictions.
+3. **View Predictions**: The app will display actual vs. predicted prices for both training and testing datasets.
+""")
+
+# Load sample data
+@st.cache_data
+def load_sample_data():
+    try:
+        return pd.read_csv('AAPL.csv', parse_dates=['Date'])
+    except Exception as e:
+        st.error(f"Error loading sample data: {str(e)}")
+        return None
+
 # Load and preprocess data
 @st.cache_data
 def load_and_preprocess_data(file):
     try:
-        df = pd.read_csv(file, parse_dates=['Date'])
+        if isinstance(file, str):  # If it's a string, it's the path to the sample file
+            df = pd.read_csv(file, parse_dates=['Date'])
+        else:  # Otherwise, it's an uploaded file
+            df = pd.read_csv(file, parse_dates=['Date'])
         df = add_technical_indicators(df)
         df = df[df['Volume'] != 0]
         return df
@@ -73,7 +98,7 @@ def main():
     st.title('Stock Price Prediction App')
     st.markdown("""
     This app predicts stock prices using a Long Short-Term Memory (LSTM) neural network model.
-    Upload a CSV file with columns: Date, Open, High, Low, Close, Adj Close, Volume.
+    You can either use the sample data or upload your own CSV file with columns: Date, Open, High, Low, Close, Adj Close, Volume.
     """)
 
     # Sidebar for hyperparameters
@@ -86,55 +111,62 @@ def main():
     optimizer = st.sidebar.selectbox('Select Optimizer', ['adam', 'sgd', 'rmsprop', 'adagrad', 'adamax'])
     loss_function = st.sidebar.selectbox('Select Loss Function', ['mean_squared_error', 'mean_absolute_error', 'mean_absolute_percentage_error'])
 
-    # File uploader
-    uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+    # Data source selection
+    data_source = st.radio("Choose data source:", ('Use sample data', 'Upload your own data'))
 
-    if uploaded_file is not None:
-        df = load_and_preprocess_data(uploaded_file)
-        if df is not None:
-            st.subheader('Descriptive Statistics')
-            st.write(df.describe())
+    if data_source == 'Use sample data':
+        df = load_sample_data()
+    else:
+        uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+        if uploaded_file is not None:
+            df = load_and_preprocess_data(uploaded_file)
+        else:
+            df = None
 
-            with st.spinner('Processing data and training model...'):
-                X, y, scaler_X, scaler_y, dates = preprocess_for_model(df)
-                split = int((train_percentage / 100) * len(X))
-                X_train, X_test = X[:split], X[split:]
-                y_train, y_test = y[:split], y[split:]
+    if df is not None:
+        st.subheader('Descriptive Statistics')
+        st.write(df.describe())
 
-                model = create_and_train_model(X_train, y_train, lstm_units, dropout_rate, batch_size, epochs, optimizer, loss_function)
-                train_predictions = model.predict(X_train)
-                test_predictions = model.predict(X_test)
+        with st.spinner('Processing data and training model...'):
+            X, y, scaler_X, scaler_y, dates = preprocess_for_model(df)
+            split = int((train_percentage / 100) * len(X))
+            X_train, X_test = X[:split], X[split:]
+            y_train, y_test = y[:split], y[split:]
 
-            # Inverse transform predictions
-            train_predictions = scaler_y.inverse_transform(train_predictions)
-            test_predictions = scaler_y.inverse_transform(test_predictions)
-            y_train_inverse = scaler_y.inverse_transform(y_train)
-            y_test_inverse = scaler_y.inverse_transform(y_test)
+            model = create_and_train_model(X_train, y_train, lstm_units, dropout_rate, batch_size, epochs, optimizer, loss_function)
+            train_predictions = model.predict(X_train)
+            test_predictions = model.predict(X_test)
 
-            # Calculate metrics
-            rmse_train = np.sqrt(mean_squared_error(y_train_inverse, train_predictions))
-            mae_train = mean_absolute_error(y_train_inverse, train_predictions)
-            r2_train = r2_score(y_train_inverse, train_predictions)
-            rmse_test = np.sqrt(mean_squared_error(y_test_inverse, test_predictions))
-            mae_test = mean_absolute_error(y_test_inverse, test_predictions)
-            r2_test = r2_score(y_test_inverse, test_predictions)
+        # Inverse transform predictions
+        train_predictions = scaler_y.inverse_transform(train_predictions)
+        test_predictions = scaler_y.inverse_transform(test_predictions)
+        y_train_inverse = scaler_y.inverse_transform(y_train)
+        y_test_inverse = scaler_y.inverse_transform(y_test)
 
-            # Display metrics
-            st.write(f"Training RMSE: {rmse_train:.2f}, MAE: {mae_train:.2f}, R²: {r2_train:.2f}")
-            st.write(f"Testing RMSE: {rmse_test:.2f}, MAE: {mae_test:.2f}, R²: {r2_test:.2f}")
+        # Calculate metrics
+        rmse_train = np.sqrt(mean_squared_error(y_train_inverse, train_predictions))
+        mae_train = mean_absolute_error(y_train_inverse, train_predictions)
+        r2_train = r2_score(y_train_inverse, train_predictions)
+        rmse_test = np.sqrt(mean_squared_error(y_test_inverse, test_predictions))
+        mae_test = mean_absolute_error(y_test_inverse, test_predictions)
+        r2_test = r2_score(y_test_inverse, test_predictions)
 
-            # Plot results
-            fig_train = go.Figure()
-            fig_train.add_trace(go.Scatter(x=dates[:split], y=y_train_inverse.flatten(), mode='lines', name='Actual Train Prices'))
-            fig_train.add_trace(go.Scatter(x=dates[:split], y=train_predictions.flatten(), mode='lines', name='Predicted Train Prices'))
-            fig_train.update_layout(title='Training Data: Actual vs Predicted Close Prices', xaxis_title='Date', yaxis_title='Close Price')
-            st.plotly_chart(fig_train)
+        # Display metrics
+        st.write(f"Training RMSE: {rmse_train:.2f}, MAE: {mae_train:.2f}, R²: {r2_train:.2f}")
+        st.write(f"Testing RMSE: {rmse_test:.2f}, MAE: {mae_test:.2f}, R²: {r2_test:.2f}")
 
-            fig_test = go.Figure()
-            fig_test.add_trace(go.Scatter(x=dates[split:], y=y_test_inverse.flatten(), mode='lines', name='Actual Test Prices'))
-            fig_test.add_trace(go.Scatter(x=dates[split:], y=test_predictions.flatten(), mode='lines', name='Predicted Test Prices'))
-            fig_test.update_layout(title='Testing Data: Actual vs Predicted Close Prices', xaxis_title='Date', yaxis_title='Close Price')
-            st.plotly_chart(fig_test)
+        # Plot results
+        fig_train = go.Figure()
+        fig_train.add_trace(go.Scatter(x=dates[:split], y=y_train_inverse.flatten(), mode='lines', name='Actual Train Prices'))
+        fig_train.add_trace(go.Scatter(x=dates[:split], y=train_predictions.flatten(), mode='lines', name='Predicted Train Prices'))
+        fig_train.update_layout(title='Training Data: Actual vs Predicted Close Prices', xaxis_title='Date', yaxis_title='Close Price')
+        st.plotly_chart(fig_train)
+
+        fig_test = go.Figure()
+        fig_test.add_trace(go.Scatter(x=dates[split:], y=y_test_inverse.flatten(), mode='lines', name='Actual Test Prices'))
+        fig_test.add_trace(go.Scatter(x=dates[split:], y=test_predictions.flatten(), mode='lines', name='Predicted Test Prices'))
+        fig_test.update_layout(title='Testing Data: Actual vs Predicted Close Prices', xaxis_title='Date', yaxis_title='Close Price')
+        st.plotly_chart(fig_test)
 
 if __name__ == "__main__":
     main()
