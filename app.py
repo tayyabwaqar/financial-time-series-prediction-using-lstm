@@ -116,12 +116,11 @@ def create_and_train_model(X_train, y_train, model_type, lstm_units, dropout_rat
     
     return model, history
 
-# Function to create candlestick chart
 def create_candlestick_chart(df):
-    fig = make_subplots(rows=3, cols=1, shared_xaxes=True, 
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
                         vertical_spacing=0.03, 
-                        subplot_titles=('Candlestick', 'Volume', 'RSI'),
-                        row_heights=[0.6, 0.2, 0.2])
+                        subplot_titles=('Candlestick', 'Volume'),
+                        row_heights=[0.7, 0.3])
 
     fig.add_trace(go.Candlestick(x=df['Date'],
                 open=df['Open'], high=df['High'],
@@ -130,9 +129,11 @@ def create_candlestick_chart(df):
 
     fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], name='Volume'), row=2, col=1)
     
-    fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI'], name='RSI'), row=3, col=1)
+    if 'RSI' in df.columns:
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI'], name='RSI'), row=1, col=1, yaxis="y2")
+        fig.update_layout(yaxis2=dict(title="RSI", overlaying="y", side="right"))
 
-    fig.update_layout(title='Stock Price, Volume, and RSI Over Time',
+    fig.update_layout(title='Stock Price and Volume Over Time',
                       xaxis_rangeslider_visible=False)
     return fig
 
@@ -195,6 +196,9 @@ else:
     st.warning("Please upload a CSV file or fetch real-time data.")
     st.stop()
 
+# Add technical indicators
+df = add_technical_indicators(df)
+
 # Display raw data and candlestick chart
 st.subheader('Raw Data')
 st.write(df.head())
@@ -204,6 +208,7 @@ st.plotly_chart(create_candlestick_chart(df))
 
 # Preprocess data
 X, y, scaler_X, scaler_y, dates = preprocess_data(df, features)
+
 
 # Split data
 split = int((train_percentage / 100) * len(X))
