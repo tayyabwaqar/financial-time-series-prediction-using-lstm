@@ -13,6 +13,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout, Input
 import plotly.graph_objs as go
+from datetime import datetime
 
 # Load sample data from a CSV file
 @st.cache_data
@@ -123,18 +124,49 @@ def create_and_train_model(X_train, y_train):
     model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, verbose=0)
     return model
 
+# Function to guess date format
+def guess_date_format(date_string):
+    date_formats = [
+        "%Y-%m-%d",  # YYYY-MM-DD
+        "%d-%m-%Y",  # DD-MM-YYYY
+        "%m-%d-%Y",  # MM-DD-YYYY
+        "%Y/%m/%d",  # YYYY/MM/DD
+        "%d/%m/%Y",  # DD/MM/YYYY
+        "%m/%d/%Y",  # MM/DD/YYYY
+        "%d.%m.%Y",  # DD.MM.YYYY
+        "%m.%d.%Y",  # MM.DD.YYYY
+    ]
+    
+    for date_format in date_formats:
+        try:
+            datetime.strptime(date_string, date_format)
+            return date_format
+        except ValueError:
+            continue
+    
+    return None
+
 # Predict and display results
 if uploaded_file is not None or sample_df is not None:
     # Use uploaded file if available, otherwise use sample data
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
-        df['Date'] = pd.to_datetime(df['Date'])  # Explicitly convert Date to datetime
+        
+        # Guess the date format from the first date in the 'Date' column
+        date_format = guess_date_format(df['Date'].iloc[0])
+        
+        if date_format:
+            df['Date'] = pd.to_datetime(df['Date'], format=date_format)
+        else:
+            st.error("Unable to determine the date format. Please ensure your 'Date' column is in a recognizable format.")
+            st.stop()
     else:
         df = sample_df
 
     # Display descriptive statistics
     st.subheader('Descriptive Statistics')
     st.write(df.describe())
+    
 
     # Inform user that the model is being trained
     with st.spinner('Training the model, please wait...'):
