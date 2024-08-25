@@ -312,7 +312,7 @@ st.markdown("""
 
 ### Future Enhancements
 - Consider adding more advanced features like automated hyperparameter tuning, ensemble methods, and improved error handling.
-- You could also implement user authentication to save user preferences and analyses.
+- You could also implement user authentication to save user preferences and analyses.""")
 
 # Run the Streamlit app
 if __name__ == "__main__":
