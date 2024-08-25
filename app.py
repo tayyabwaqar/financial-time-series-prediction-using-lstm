@@ -52,8 +52,7 @@ def add_technical_indicators(df):
     df['RSI'] = compute_rsi(df['Close'], window=14)
     df['MACD'] = df['Close'].ewm(span=12).mean() - df['Close'].ewm(span=26).mean()
     df['Signal'] = df['MACD'].ewm(span=9).mean()
-    df = df.dropna()
-    return df
+    return df 
 
 # Function to compute RSI
 def compute_rsi(series, window):
@@ -62,6 +61,29 @@ def compute_rsi(series, window):
     loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
     rs = gain / loss
     return 100 - (100 / (1 + rs))
+
+# Function to create candlestick chart
+def create_candlestick_chart(df):
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
+                        vertical_spacing=0.03, 
+                        subplot_titles=('Candlestick', 'Volume'),
+                        row_heights=[0.7, 0.3])
+
+    fig.add_trace(go.Candlestick(x=df['Date'],
+                open=df['Open'], high=df['High'],
+                low=df['Low'], close=df['Close'],
+                name='Price'), row=1, col=1)
+
+    fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], name='Volume'), row=2, col=1)
+    
+    if 'RSI' in df.columns:
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI'], name='RSI'), row=1, col=1, yaxis="y2")
+        fig.update_layout(yaxis2=dict(title="RSI", overlaying="y", side="right"))
+
+    fig.update_layout(title='Stock Price and Volume Over Time',
+                      xaxis_rangeslider_visible=False)
+    return fig
+
 
 # Function to preprocess the data
 def preprocess_data(df, features):
@@ -116,26 +138,6 @@ def create_and_train_model(X_train, y_train, model_type, lstm_units, dropout_rat
     
     return model, history
 
-def create_candlestick_chart(df):
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
-                        vertical_spacing=0.03, 
-                        subplot_titles=('Candlestick', 'Volume'),
-                        row_heights=[0.7, 0.3])
-
-    fig.add_trace(go.Candlestick(x=df['Date'],
-                open=df['Open'], high=df['High'],
-                low=df['Low'], close=df['Close'],
-                name='Price'), row=1, col=1)
-
-    fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], name='Volume'), row=2, col=1)
-    
-    if 'RSI' in df.columns:
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI'], name='RSI'), row=1, col=1, yaxis="y2")
-        fig.update_layout(yaxis2=dict(title="RSI", overlaying="y", side="right"))
-
-    fig.update_layout(title='Stock Price and Volume Over Time',
-                      xaxis_rangeslider_visible=False)
-    return fig
 
 # Function to get table download link
 def get_table_download_link(df):
@@ -207,6 +209,8 @@ st.subheader('Candlestick Chart')
 st.plotly_chart(create_candlestick_chart(df))
 
 # Preprocess data
+# Note: We're dropping NaN values here, after creating the chart
+df = df.dropna()
 X, y, scaler_X, scaler_y, dates = preprocess_data(df, features)
 
 
