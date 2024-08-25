@@ -11,13 +11,15 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.layers import LSTM, Dense, Dropout, Input
 import plotly.graph_objs as go
 
 # Load sample data from a CSV file
 @st.cache_data
 def load_sample_data():
-    return pd.read_csv('AAPL.csv', parse_dates=['Date'])
+    df = pd.read_csv('AAPL.csv')
+    df['Date'] = pd.to_datetime(df['Date'])  # Explicitly convert Date to datetime
+    return df
 
 # Title and description
 st.title('Stock Price Prediction App')
@@ -106,24 +108,27 @@ def preprocess_data(df):
 
 # Function to create and train the LSTM model
 def create_and_train_model(X_train, y_train):
-    model = Sequential()
-    model.add(LSTM(units=lstm_units, return_sequences=True, input_shape=(X_train.shape[1], X_train.shape[2])))
-    model.add(Dropout(dropout_rate))
-    model.add(LSTM(units=lstm_units // 2, return_sequences=True))
-    model.add(Dropout(dropout_rate))
-    model.add(LSTM(units=lstm_units // 4, return_sequences=False))
-    model.add(Dropout(dropout_rate))
-    model.add(Dense(units=1))
+    model = Sequential([
+        Input(shape=(X_train.shape[1], X_train.shape[2])),
+        LSTM(units=lstm_units, return_sequences=True),
+        Dropout(dropout_rate),
+        LSTM(units=lstm_units // 2, return_sequences=True),
+        Dropout(dropout_rate),
+        LSTM(units=lstm_units // 4, return_sequences=False),
+        Dropout(dropout_rate),
+        Dense(units=1)
+    ])
 
     model.compile(optimizer=selected_optimizer, loss=selected_loss_function)
-    model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, verbose=0)  # Increased epochs
+    model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, verbose=0)
     return model
 
 # Predict and display results
 if uploaded_file is not None or sample_df is not None:
     # Use uploaded file if available, otherwise use sample data
     if uploaded_file is not None:
-        df = pd.read_csv(uploaded_file, parse_dates=['Date'])
+        df = pd.read_csv(uploaded_file)
+        df['Date'] = pd.to_datetime(df['Date'])  # Explicitly convert Date to datetime
     else:
         df = sample_df
 
